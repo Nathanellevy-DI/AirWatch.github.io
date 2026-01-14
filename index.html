@@ -14,6 +14,15 @@
   <meta name="apple-mobile-web-app-title" content="AirWatch" />
   <link rel="apple-touch-icon" href="/AirWatch.github.io/logo.png" />
 
+  <!-- Security: Content Security Policy -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self'; 
+    script-src 'self' 'unsafe-inline' https://unpkg.com;
+    style-src 'self' 'unsafe-inline' https://unpkg.com;
+    img-src 'self' data: https://*.basemaps.cartocdn.com https://unpkg.com;
+    connect-src 'self' https://api.adsb.lol https://opensky-network.org;
+  ">
+
   <!-- Meta Description -->
   <meta name="description"
     content="AirWatch - Global flight tracking. View real-time aircraft data worldwide with live data from OpenSky Network." />
@@ -50,7 +59,7 @@
       scrollbar-width: none;
     }
   </style>
-  <script type="module" crossorigin src="/AirWatch.github.io/assets/index-BcJ4uSNw.js"></script>
+  <script type="module" crossorigin src="/AirWatch.github.io/assets/index-BLPraoT9.js"></script>
   <link rel="stylesheet" crossorigin href="/AirWatch.github.io/assets/index-BTac-ly9.css">
 <link rel="manifest" href="/AirWatch.github.io/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/AirWatch.github.io/registerSW.js"></script></head>
 
