@@ -90,7 +90,7 @@ export const msToFpm = (ms) => {
  * @param {number} fraction (0 to 1)
  * @returns {Object} {lat, lon}
  */
-export const calculateIntermediatePoint = (lat1, lon1, lat2, lon2, fraction) => {
+export const interpolatePosition = (lat1, lon1, lat2, lon2, fraction) => {
     const lat1Rad = lat1 * Math.PI / 180;
     const lon1Rad = lon1 * Math.PI / 180;
     const lat2Rad = lat2 * Math.PI / 180;
@@ -132,7 +132,7 @@ export const calculateIntermediatePoint = (lat1, lon1, lat2, lon2, fraction) => 
 export const generateGeodesicPath = (start, end, numPoints = 100) => {
     const points = [];
     for (let i = 0; i <= numPoints; i++) {
-        const p = calculateIntermediatePoint(
+        const p = interpolatePosition(
             start.lat, start.lon,
             end.lat, end.lon,
             i / numPoints
@@ -140,4 +140,24 @@ export const generateGeodesicPath = (start, end, numPoints = 100) => {
         points.push([p.lat, p.lon]);
     }
     return points;
+};
+
+/**
+ * Calculate initial bearing between two points
+ * @param {number} lat1 
+ * @param {number} lon1 
+ * @param {number} lat2 
+ * @param {number} lon2 
+ * @returns {number} Bearing in degrees (0-360)
+ */
+export const calculateBearing = (lat1, lon1, lat2, lon2) => {
+    const toRad = deg => deg * Math.PI / 180;
+    const toDeg = rad => rad * 180 / Math.PI;
+
+    const dLon = toRad(lon2 - lon1);
+    const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+    const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+        Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+
+    return (toDeg(Math.atan2(y, x)) + 360) % 360;
 };

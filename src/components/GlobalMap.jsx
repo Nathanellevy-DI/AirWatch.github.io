@@ -86,14 +86,28 @@ const createPlaneIcon = (heading, isSelected = false) => {
 function GlobalMap({ center, zoom, flights, userLocation, onFlightSelect, selectedFlight, onViewChange, previewFlights = [], onTogglePreview }) {
     const userIcon = useMemo(() => createUserIcon(), []);
 
-    // Filter visible flights if preview mode is active
+    // Filter visible flights based on zoom and preview mode
     const visibleFlights = useMemo(() => {
+        // 1. If in preview mode, show ONLY previewed flights (and their intended routes)
         if (previewFlights.length > 0) {
-            // Show only previewed flights
             return flights.filter(f => previewFlights.some(pf => pf.icao24 === f.icao24));
         }
+
+        // 2. Level of Detail (LOD) Filtering for performance
+        // At low zoom, show fewer planes to prevent "billion planes" clutter
+        if (zoom < 6) {
+            // Only show Wide-body (3) and Heavy (5) aircraft, plus a few others to keep it alive
+            return flights.filter(f => (f.category >= 3)).slice(0, 250);
+        }
+
+        if (zoom < 8) {
+            // Medium zoom: Limit total count
+            return flights.slice(0, 500);
+        }
+
+        // High zoom: Show everything in the viewport
         return flights;
-    }, [flights, previewFlights]);
+    }, [flights, previewFlights, zoom]);
 
     return (
         <div className="fixed inset-0 pt-16 lg:pl-72 pb-16 lg:pb-0">
@@ -161,13 +175,7 @@ function GlobalMap({ center, zoom, flights, userLocation, onFlightSelect, select
                             key={flight.icao24}
                             position={[flight.latitude, flight.longitude]}
                             icon={planeIcon}
-                            eventHandlers={{
-                                click: (e) => {
-                                    // Map click already handled by MapEvents? No, marker click handles select.
-                                    // Just ensure standard selection works.
-                                    onFlightSelect(flight);
-                                }
-                            }}
+                        // Removed click handler to prevent auto-opening dashboard
                         >
                             <Popup>
                                 <div className="bg-[#161b22] rounded-xl p-4 min-w-[200px]">
