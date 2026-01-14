@@ -1,3 +1,7 @@
+// Flight Data API with Multiple Sources
+// Primary: ADSB.lol (no rate limits)
+// Fallback: OpenSky Network
+
 // OpenSky Network API response indices
 const STATE_INDICES = {
     ICAO24: 0,
@@ -89,7 +93,6 @@ const AIRLINE_CODES = {
     'HVN': { name: 'Vietnam Airlines', country: 'Vietnam' },
     'AIC': { name: 'Air India', country: 'India' },
     'IGO': { name: 'IndiGo', country: 'India' },
-    'UAE': { name: 'Emirates', country: 'UAE' },
     'ETH': { name: 'Ethiopian Airlines', country: 'Ethiopia' },
     'SAA': { name: 'South African Airways', country: 'South Africa' },
     'RAM': { name: 'Royal Air Maroc', country: 'Morocco' },
@@ -99,10 +102,16 @@ const AIRLINE_CODES = {
     'GTI': { name: 'Atlas Air', country: 'USA' },
 };
 
+// Track current API source
+let currentApiSource = 'adsb.lol';
+
+/**
+ * Get current API source name
+ */
+export const getCurrentApiSource = () => currentApiSource;
+
 /**
  * Extract airline info from callsign
- * @param {string} callsign - Flight callsign
- * @returns {Object|null} Airline info or null
  */
 const getAirlineInfo = (callsign) => {
     if (!callsign || callsign.length < 3) return null;
@@ -111,9 +120,78 @@ const getAirlineInfo = (callsign) => {
 };
 
 /**
+ * Parse ADSB.lol aircraft data into our standard format
+ */
+const parseADSBLolAircraft = (ac) => {
+    const callsign = ac.flight?.trim() || ac.r || 'N/A';
+    const airlineInfo = getAirlineInfo(callsign);
+
+    // Map ADSB.lol category to our format
+    const categoryMap = {
+        'A0': 0, 'A1': 1, 'A2': 2, 'A3': 3, 'A4': 4, 'A5': 5, 'A6': 6, 'A7': 7,
+        'B0': 0, 'B1': 8, 'B2': 9, 'B3': 10, 'B4': 11, 'B5': 12, 'B6': 13, 'B7': 14,
+        'C0': 15, 'C1': 16, 'C2': 17, 'C3': 0
+    };
+
+    const category = categoryMap[ac.category] || 0;
+
+    return {
+        icao24: ac.hex?.toLowerCase() || '',
+        callsign: callsign,
+        flightNumber: callsign,
+        originCountry: ac.r ? getCountryFromRegistration(ac.r) : 'Unknown',
+        longitude: ac.lon,
+        latitude: ac.lat,
+        baroAltitude: ac.alt_baro ? ac.alt_baro * 0.3048 : null, // feet to meters
+        geoAltitude: ac.alt_geom ? ac.alt_geom * 0.3048 : null,
+        onGround: ac.alt_baro === 'ground' || ac.alt_baro === 0,
+        velocity: ac.gs ? ac.gs * 0.514444 : null, // knots to m/s
+        trueTrack: ac.track,
+        verticalRate: ac.baro_rate ? ac.baro_rate * 0.00508 : null, // fpm to m/s
+        squawk: ac.squawk,
+        category: category,
+        categoryLabel: CATEGORY_LABELS[category] || 'Unknown',
+        lastContact: Math.floor(Date.now() / 1000),
+        timePosition: Math.floor(Date.now() / 1000),
+        airline: airlineInfo?.name || null,
+        airlineCountry: airlineInfo?.country || null,
+        // Extra ADSB.lol fields
+        registration: ac.r || null,
+        aircraftType: ac.t || null,
+    };
+};
+
+/**
+ * Get country from aircraft registration prefix
+ */
+const getCountryFromRegistration = (reg) => {
+    if (!reg) return 'Unknown';
+    const prefix = reg.substring(0, 2).toUpperCase();
+    const countryMap = {
+        'N': 'United States', '4X': 'Israel', 'G-': 'United Kingdom', 'D-': 'Germany',
+        'F-': 'France', 'I-': 'Italy', 'EC': 'Spain', 'HB': 'Switzerland',
+        'OE': 'Austria', 'PH': 'Netherlands', 'OO': 'Belgium', 'SE': 'Sweden',
+        'LN': 'Norway', 'OH': 'Finland', 'OY': 'Denmark', 'SP': 'Poland',
+        'OK': 'Czech Republic', 'HA': 'Hungary', 'YR': 'Romania', 'LZ': 'Bulgaria',
+        'TC': 'Turkey', 'SX': 'Greece', 'CS': 'Portugal', 'EI': 'Ireland',
+        'C-': 'Canada', 'XA': 'Mexico', 'PP': 'Brazil', 'LV': 'Argentina',
+        'CC': 'Chile', 'VH': 'Australia', 'ZK': 'New Zealand', 'JA': 'Japan',
+        'HL': 'South Korea', 'B-': 'China', '9V': 'Singapore', 'HS': 'Thailand',
+        'PK': 'Indonesia', '9M': 'Malaysia', 'RP': 'Philippines', 'VT': 'India',
+        'A6': 'UAE', 'A7': 'Qatar', 'HZ': 'Saudi Arabia', 'EP': 'Iran',
+        'SU': 'Egypt', 'CN': 'Morocco', 'ZS': 'South Africa', 'ET': 'Ethiopia',
+        '5N': 'Nigeria', '5H': 'Tanzania', '5Y': 'Kenya', 'VP': 'British Overseas',
+        'A4': 'Oman', 'A9': 'Bahrain', '9K': 'Kuwait', 'JY': 'Jordan'
+    };
+    // Check 2-char prefixes first
+    if (countryMap[prefix]) return countryMap[prefix];
+    // Check 1-char prefix
+    if (countryMap[reg[0]]) return countryMap[reg[0]];
+    return 'Unknown';
+};
+
+/**
  * Parse raw OpenSky state array into readable object
- * @param {Array} state - Raw state array from API
- * @returns {Object} Parsed flight object
  */
 const parseFlightState = (state) => {
     const callsign = state[STATE_INDICES.CALLSIGN]?.trim() || 'N/A';
@@ -122,7 +200,7 @@ const parseFlightState = (state) => {
     return {
         icao24: state[STATE_INDICES.ICAO24],
         callsign: callsign,
-        flightNumber: callsign, // Alias for search
+        flightNumber: callsign,
         originCountry: state[STATE_INDICES.ORIGIN_COUNTRY],
         longitude: state[STATE_INDICES.LONGITUDE],
         latitude: state[STATE_INDICES.LATITUDE],
@@ -137,63 +215,130 @@ const parseFlightState = (state) => {
         categoryLabel: CATEGORY_LABELS[state[STATE_INDICES.CATEGORY]] || 'Unknown',
         lastContact: state[STATE_INDICES.LAST_CONTACT],
         timePosition: state[STATE_INDICES.TIME_POSITION],
-        // Enriched data
         airline: airlineInfo?.name || null,
         airlineCountry: airlineInfo?.country || null,
     };
 };
 
 /**
- * Fetch flights from OpenSky Network API
- * @param {Object} bbox - Bounding box { lamin, lomin, lamax, lomax }
- * @returns {Promise<Array>} Array of parsed flight objects
+ * Fetch flights from ADSB.lol API (NO RATE LIMITS!)
  */
-export const fetchFlights = async (bbox) => {
+const fetchFromADSBLol = async (bbox) => {
     const { lamin, lomin, lamax, lomax } = bbox;
 
+    // Calculate center and radius for ADSB.lol API
+    const centerLat = (lamin + lamax) / 2;
+    const centerLon = (lomin + lomax) / 2;
+
+    // Calculate approximate radius in nautical miles (max 250nm)
+    const latDiff = Math.abs(lamax - lamin);
+    const lonDiff = Math.abs(lomax - lomin);
+    const maxDiff = Math.max(latDiff, lonDiff);
+    const radiusNm = Math.min(Math.round(maxDiff * 60 / 2), 250);
+
+    const url = `https://api.adsb.lol/v2/lat/${centerLat.toFixed(4)}/lon/${centerLon.toFixed(4)}/dist/${radiusNm}`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error(`ADSB.lol API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.ac || data.ac.length === 0) {
+        return [];
+    }
+
+    // Parse and filter valid flights
+    const flights = data.ac
+        .map(parseADSBLolAircraft)
+        .filter(flight => flight.latitude !== null && flight.longitude !== null);
+
+    currentApiSource = 'adsb.lol';
+    return flights;
+};
+
+/**
+ * Fetch flights from OpenSky Network API (FALLBACK)
+ */
+const fetchFromOpenSky = async (bbox) => {
+    const { lamin, lomin, lamax, lomax } = bbox;
     const url = `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
 
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        if (response.status === 429) {
+            throw new Error('OpenSky rate limited');
+        }
+        throw new Error(`OpenSky API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.states || data.states.length === 0) {
+        return [];
+    }
+
+    const flights = data.states
+        .map(parseFlightState)
+        .filter(flight => flight.latitude !== null && flight.longitude !== null);
+
+    currentApiSource = 'opensky';
+    return flights;
+};
+
+/**
+ * Fetch flights with automatic failover
+ * Primary: ADSB.lol (no rate limits)
+ * Fallback: OpenSky Network
+ */
+export const fetchFlights = async (bbox) => {
     try {
-        const response = await fetch(url);
+        // Try ADSB.lol first (no rate limits!)
+        return await fetchFromADSBLol(bbox);
+    } catch (adsbError) {
+        console.warn('ADSB.lol failed, trying OpenSky:', adsbError.message);
 
-        if (!response.ok) {
-            if (response.status === 429) {
-                throw new Error('Rate limited. Please wait before refreshing.');
-            }
-            throw new Error(`API error: ${response.status}`);
+        try {
+            // Fallback to OpenSky
+            return await fetchFromOpenSky(bbox);
+        } catch (openskyError) {
+            console.error('All APIs failed:', openskyError.message);
+            throw new Error('Unable to fetch flight data. Please try again later.');
         }
-
-        const data = await response.json();
-
-        if (!data.states || data.states.length === 0) {
-            return [];
-        }
-
-        // Parse and filter valid flights (must have lat/lon)
-        const flights = data.states
-            .map(parseFlightState)
-            .filter(flight => flight.latitude !== null && flight.longitude !== null);
-
-        return flights;
-    } catch (error) {
-        console.error('Error fetching flights:', error);
-        throw error;
     }
 };
 
 /**
  * Search for a specific flight by callsign globally
- * @param {string} callsign - Flight callsign to search for
- * @returns {Promise<Object|null>} Flight data or null
  */
 export const searchFlightByCallsign = async (callsign) => {
     const searchTerm = callsign.toUpperCase().trim();
 
-    // OpenSky doesn't have a direct callsign search, so we fetch all and filter
-    // For better results, we could use a wider bounding box or all flights
-    const url = `https://opensky-network.org/api/states/all`;
-
     try {
+        // Try ADSB.lol first - search globally
+        const url = `https://api.adsb.lol/v2/callsign/${searchTerm}`;
+        const response = await fetch(url);
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.ac && data.ac.length > 0) {
+                const flight = parseADSBLolAircraft(data.ac[0]);
+                if (flight.latitude && flight.longitude) {
+                    currentApiSource = 'adsb.lol';
+                    return flight;
+                }
+            }
+        }
+    } catch (error) {
+        console.warn('ADSB.lol search failed:', error.message);
+    }
+
+    // Fallback to OpenSky
+    try {
+        const url = `https://opensky-network.org/api/states/all`;
         const response = await fetch(url);
 
         if (!response.ok) {
@@ -209,7 +354,6 @@ export const searchFlightByCallsign = async (callsign) => {
             return null;
         }
 
-        // Find matching flight
         const matchingState = data.states.find(state => {
             const flightCallsign = state[STATE_INDICES.CALLSIGN]?.trim().toUpperCase() || '';
             return flightCallsign.includes(searchTerm) || searchTerm.includes(flightCallsign);
@@ -218,6 +362,7 @@ export const searchFlightByCallsign = async (callsign) => {
         if (matchingState) {
             const flight = parseFlightState(matchingState);
             if (flight.latitude && flight.longitude) {
+                currentApiSource = 'opensky';
                 return flight;
             }
         }
@@ -231,8 +376,6 @@ export const searchFlightByCallsign = async (callsign) => {
 
 /**
  * Fetch aircraft metadata from OpenSky
- * @param {string} icao24 - Aircraft ICAO24 identifier
- * @returns {Promise<Object|null>} Aircraft metadata or null
  */
 export const fetchAircraftMetadata = async (icao24) => {
     try {
