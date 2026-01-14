@@ -1,0 +1,252 @@
+// OpenSky Network API response indices
+const STATE_INDICES = {
+    ICAO24: 0,
+    CALLSIGN: 1,
+    ORIGIN_COUNTRY: 2,
+    TIME_POSITION: 3,
+    LAST_CONTACT: 4,
+    LONGITUDE: 5,
+    LATITUDE: 6,
+    BARO_ALTITUDE: 7,
+    ON_GROUND: 8,
+    VELOCITY: 9,
+    TRUE_TRACK: 10,
+    VERTICAL_RATE: 11,
+    SENSORS: 12,
+    GEO_ALTITUDE: 13,
+    SQUAWK: 14,
+    SPI: 15,
+    POSITION_SOURCE: 16,
+    CATEGORY: 17
+};
+
+// Aircraft category mapping based on OpenSky categories
+const CATEGORY_LABELS = {
+    0: 'Unknown',
+    1: 'Light Aircraft',
+    2: 'Small Aircraft',
+    3: 'Large Aircraft',
+    4: 'High Vortex Large',
+    5: 'Heavy Aircraft',
+    6: 'High Performance',
+    7: 'Rotorcraft',
+    8: 'Glider',
+    9: 'Lighter than Air',
+    10: 'Parachutist',
+    11: 'Ultralight',
+    12: 'Reserved',
+    13: 'UAV',
+    14: 'Space Vehicle',
+    15: 'Emergency Vehicle',
+    16: 'Service Vehicle',
+    17: 'Ground Obstruction'
+};
+
+// Airline ICAO codes to names (common airlines)
+const AIRLINE_CODES = {
+    'AAL': { name: 'American Airlines', country: 'USA' },
+    'DAL': { name: 'Delta Air Lines', country: 'USA' },
+    'UAL': { name: 'United Airlines', country: 'USA' },
+    'SWA': { name: 'Southwest Airlines', country: 'USA' },
+    'JBU': { name: 'JetBlue Airways', country: 'USA' },
+    'BAW': { name: 'British Airways', country: 'UK' },
+    'DLH': { name: 'Lufthansa', country: 'Germany' },
+    'AFR': { name: 'Air France', country: 'France' },
+    'KLM': { name: 'KLM Royal Dutch', country: 'Netherlands' },
+    'UAE': { name: 'Emirates', country: 'UAE' },
+    'QTR': { name: 'Qatar Airways', country: 'Qatar' },
+    'ETD': { name: 'Etihad Airways', country: 'UAE' },
+    'SIA': { name: 'Singapore Airlines', country: 'Singapore' },
+    'CPA': { name: 'Cathay Pacific', country: 'Hong Kong' },
+    'ANA': { name: 'All Nippon Airways', country: 'Japan' },
+    'JAL': { name: 'Japan Airlines', country: 'Japan' },
+    'QFA': { name: 'Qantas', country: 'Australia' },
+    'THY': { name: 'Turkish Airlines', country: 'Turkey' },
+    'ELY': { name: 'El Al', country: 'Israel' },
+    'RYR': { name: 'Ryanair', country: 'Ireland' },
+    'EZY': { name: 'easyJet', country: 'UK' },
+    'VIR': { name: 'Virgin Atlantic', country: 'UK' },
+    'ACA': { name: 'Air Canada', country: 'Canada' },
+    'TAM': { name: 'LATAM Airlines', country: 'Brazil' },
+    'IBE': { name: 'Iberia', country: 'Spain' },
+    'AZA': { name: 'ITA Airways', country: 'Italy' },
+    'SAS': { name: 'Scandinavian Airlines', country: 'Scandinavia' },
+    'FIN': { name: 'Finnair', country: 'Finland' },
+    'AUA': { name: 'Austrian Airlines', country: 'Austria' },
+    'SWR': { name: 'Swiss International', country: 'Switzerland' },
+    'TAP': { name: 'TAP Air Portugal', country: 'Portugal' },
+    'LOT': { name: 'LOT Polish Airlines', country: 'Poland' },
+    'CSN': { name: 'China Southern', country: 'China' },
+    'CES': { name: 'China Eastern', country: 'China' },
+    'CCA': { name: 'Air China', country: 'China' },
+    'KAL': { name: 'Korean Air', country: 'South Korea' },
+    'AAR': { name: 'Asiana Airlines', country: 'South Korea' },
+    'EVA': { name: 'EVA Air', country: 'Taiwan' },
+    'MAS': { name: 'Malaysia Airlines', country: 'Malaysia' },
+    'THA': { name: 'Thai Airways', country: 'Thailand' },
+    'GIA': { name: 'Garuda Indonesia', country: 'Indonesia' },
+    'VNL': { name: 'VietJet Air', country: 'Vietnam' },
+    'HVN': { name: 'Vietnam Airlines', country: 'Vietnam' },
+    'AIC': { name: 'Air India', country: 'India' },
+    'IGO': { name: 'IndiGo', country: 'India' },
+    'UAE': { name: 'Emirates', country: 'UAE' },
+    'ETH': { name: 'Ethiopian Airlines', country: 'Ethiopia' },
+    'SAA': { name: 'South African Airways', country: 'South Africa' },
+    'RAM': { name: 'Royal Air Maroc', country: 'Morocco' },
+    'MSR': { name: 'EgyptAir', country: 'Egypt' },
+    'FDX': { name: 'FedEx Express', country: 'USA' },
+    'UPS': { name: 'UPS Airlines', country: 'USA' },
+    'GTI': { name: 'Atlas Air', country: 'USA' },
+};
+
+/**
+ * Extract airline info from callsign
+ * @param {string} callsign - Flight callsign
+ * @returns {Object|null} Airline info or null
+ */
+const getAirlineInfo = (callsign) => {
+    if (!callsign || callsign.length < 3) return null;
+    const icaoCode = callsign.substring(0, 3).toUpperCase();
+    return AIRLINE_CODES[icaoCode] || null;
+};
+
+/**
+ * Parse raw OpenSky state array into readable object
+ * @param {Array} state - Raw state array from API
+ * @returns {Object} Parsed flight object
+ */
+const parseFlightState = (state) => {
+    const callsign = state[STATE_INDICES.CALLSIGN]?.trim() || 'N/A';
+    const airlineInfo = getAirlineInfo(callsign);
+
+    return {
+        icao24: state[STATE_INDICES.ICAO24],
+        callsign: callsign,
+        flightNumber: callsign, // Alias for search
+        originCountry: state[STATE_INDICES.ORIGIN_COUNTRY],
+        longitude: state[STATE_INDICES.LONGITUDE],
+        latitude: state[STATE_INDICES.LATITUDE],
+        baroAltitude: state[STATE_INDICES.BARO_ALTITUDE],
+        geoAltitude: state[STATE_INDICES.GEO_ALTITUDE],
+        onGround: state[STATE_INDICES.ON_GROUND],
+        velocity: state[STATE_INDICES.VELOCITY],
+        trueTrack: state[STATE_INDICES.TRUE_TRACK],
+        verticalRate: state[STATE_INDICES.VERTICAL_RATE],
+        squawk: state[STATE_INDICES.SQUAWK],
+        category: state[STATE_INDICES.CATEGORY],
+        categoryLabel: CATEGORY_LABELS[state[STATE_INDICES.CATEGORY]] || 'Unknown',
+        lastContact: state[STATE_INDICES.LAST_CONTACT],
+        timePosition: state[STATE_INDICES.TIME_POSITION],
+        // Enriched data
+        airline: airlineInfo?.name || null,
+        airlineCountry: airlineInfo?.country || null,
+    };
+};
+
+/**
+ * Fetch flights from OpenSky Network API
+ * @param {Object} bbox - Bounding box { lamin, lomin, lamax, lomax }
+ * @returns {Promise<Array>} Array of parsed flight objects
+ */
+export const fetchFlights = async (bbox) => {
+    const { lamin, lomin, lamax, lomax } = bbox;
+
+    const url = `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
+
+    try {
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            if (response.status === 429) {
+                throw new Error('Rate limited. Please wait before refreshing.');
+            }
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.states || data.states.length === 0) {
+            return [];
+        }
+
+        // Parse and filter valid flights (must have lat/lon)
+        const flights = data.states
+            .map(parseFlightState)
+            .filter(flight => flight.latitude !== null && flight.longitude !== null);
+
+        return flights;
+    } catch (error) {
+        console.error('Error fetching flights:', error);
+        throw error;
+    }
+};
+
+/**
+ * Search for a specific flight by callsign globally
+ * @param {string} callsign - Flight callsign to search for
+ * @returns {Promise<Object|null>} Flight data or null
+ */
+export const searchFlightByCallsign = async (callsign) => {
+    const searchTerm = callsign.toUpperCase().trim();
+
+    // OpenSky doesn't have a direct callsign search, so we fetch all and filter
+    // For better results, we could use a wider bounding box or all flights
+    const url = `https://opensky-network.org/api/states/all`;
+
+    try {
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            if (response.status === 429) {
+                throw new Error('Rate limited. Please wait before searching.');
+            }
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.states || data.states.length === 0) {
+            return null;
+        }
+
+        // Find matching flight
+        const matchingState = data.states.find(state => {
+            const flightCallsign = state[STATE_INDICES.CALLSIGN]?.trim().toUpperCase() || '';
+            return flightCallsign.includes(searchTerm) || searchTerm.includes(flightCallsign);
+        });
+
+        if (matchingState) {
+            const flight = parseFlightState(matchingState);
+            if (flight.latitude && flight.longitude) {
+                return flight;
+            }
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Error searching flight:', error);
+        throw error;
+    }
+};
+
+/**
+ * Fetch aircraft metadata from OpenSky
+ * @param {string} icao24 - Aircraft ICAO24 identifier
+ * @returns {Promise<Object|null>} Aircraft metadata or null
+ */
+export const fetchAircraftMetadata = async (icao24) => {
+    try {
+        const response = await fetch(`https://opensky-network.org/api/metadata/aircraft/icao/${icao24}`);
+
+        if (!response.ok) {
+            return null;
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching aircraft metadata:', error);
+        return null;
+    }
+};
+
+export { CATEGORY_LABELS, AIRLINE_CODES, getAirlineInfo };
