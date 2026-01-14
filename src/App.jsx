@@ -162,8 +162,9 @@ function App() {
     return (
         <div className="min-h-screen bg-[#0d1117] text-white overflow-hidden">
             {/* Top Navigation Bar */}
-            <header className="fixed top-0 left-0 right-0 z-50 bg-[#161b22]/95 backdrop-blur-xl border-b border-white/5">
-                <div className="flex items-center justify-between px-4 py-3">
+            <header className="fixed top-0 left-0 right-0 z-50 bg-[#161b22]/95 backdrop-blur-xl border-b border-white/5"
+                style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
+                <div className="flex items-center justify-between px-4 pb-3">
                     {/* Logo */}
                     <div className="flex items-center gap-3">
                         <button
@@ -238,11 +239,12 @@ function App() {
             </header>
 
             {/* Main Layout */}
-            <div className="flex pt-16">
+            <div className="flex" style={{ paddingTop: 'calc(4rem + env(safe-area-inset-top, 0px))' }}>
                 {/* Left Sidebar */}
-                <aside className={`fixed left-0 top-16 bottom-0 w-72 bg-[#161b22]/95 backdrop-blur-xl 
+                <aside className={`fixed left-0 bottom-0 w-72 bg-[#161b22]/95 backdrop-blur-xl 
                           border-r border-white/5 z-40 transform transition-transform duration-300
-                          ${showSidebar ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+                          ${showSidebar ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+                    style={{ top: 'calc(4rem + env(safe-area-inset-top, 0px))' }}>
                     <div className="p-4 h-full overflow-y-auto hide-scrollbar">
                         {/* Quick Stats */}
                         <div className="grid grid-cols-2 gap-2 mb-6">
