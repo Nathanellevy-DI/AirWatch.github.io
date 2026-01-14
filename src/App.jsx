@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     Plane, Search, Globe, BarChart3, Radio, RefreshCw,
     MapPin, TrendingUp, Users, Clock, X, Menu,
-    ChevronRight, Zap, Activity
+    ChevronRight, Zap, Activity, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import GlobalMap from './components/GlobalMap';
 import FlightDashboard from './components/FlightDashboard';
@@ -10,7 +10,7 @@ import FlightList from './components/FlightList';
 import StatsPanel from './components/StatsPanel';
 import SearchBar from './components/SearchBar';
 import { getBBox, getDistance } from './utils/geo';
-import { fetchFlights, searchFlightByCallsign } from './utils/api';
+import { fetchFlights, searchFlightByCallsign, isSimulationMode, setSimulationMode } from './utils/api';
 
 const REFRESH_INTERVAL = 15000;
 
@@ -50,6 +50,16 @@ function App() {
     const [showDashboard, setShowDashboard] = useState(false);
     const [activePanel, setActivePanel] = useState('map'); // 'map' | 'list' | 'stats'
     const [showSidebar, setShowSidebar] = useState(true);
+
+    // Simulation mode state
+    const [simulationEnabled, setSimulationEnabled] = useState(isSimulationMode());
+
+    const toggleSimulation = () => {
+        const newValue = !simulationEnabled;
+        setSimulationEnabled(newValue);
+        setSimulationMode(newValue);
+        loadFlights(); // Reload with new mode
+    };
 
     // Get user's location on mount
     useEffect(() => {
@@ -342,9 +352,38 @@ function App() {
                             </div>
                         </div>
 
+                        {/* Simulation Mode Toggle */}
+                        <div className="mt-6 pt-4 border-t border-white/5">
+                            <button
+                                onClick={toggleSimulation}
+                                className="w-full flex items-center justify-between px-3 py-3 rounded-xl
+                                    bg-white/5 hover:bg-white/10 transition-all"
+                            >
+                                <div className="flex items-center gap-2">
+                                    {simulationEnabled ? (
+                                        <ToggleRight className="w-5 h-5 text-green-400" />
+                                    ) : (
+                                        <ToggleLeft className="w-5 h-5 text-gray-500" />
+                                    )}
+                                    <span className="text-sm text-gray-300">Demo Mode</span>
+                                </div>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${simulationEnabled
+                                        ? 'bg-green-500/20 text-green-400'
+                                        : 'bg-gray-500/20 text-gray-400'
+                                    }`}>
+                                    {simulationEnabled ? 'ON' : 'OFF'}
+                                </span>
+                            </button>
+                            <p className="text-[10px] text-gray-600 mt-2 px-1">
+                                {simulationEnabled
+                                    ? 'Showing simulated flight data'
+                                    : 'Showing live flight data'}
+                            </p>
+                        </div>
+
                         {/* Last Updated */}
                         {lastUpdated && (
-                            <div className="mt-6 pt-4 border-t border-white/5 text-center">
+                            <div className="mt-4 pt-4 border-t border-white/5 text-center">
                                 <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
                                     <Clock className="w-3 h-3" />
                                     Updated {lastUpdated.toLocaleTimeString()}

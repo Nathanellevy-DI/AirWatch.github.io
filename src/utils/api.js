@@ -1,6 +1,17 @@
 // Flight Data API with Multiple Sources
-// Primary: ADSB.lol (no rate limits)
-// Fallback: OpenSky Network
+// Primary: Simulation Mode (realistic demo data)
+// Fallback: ADSB.lol / OpenSky Network
+
+import { getSimulatedFlights, searchSimulatedFlight } from './simulation';
+
+// Simulation mode state (toggleable from UI)
+let useSimulation = true;
+
+export const isSimulationMode = () => useSimulation;
+export const setSimulationMode = (enabled) => {
+    useSimulation = enabled;
+    console.log(`Simulation mode: ${enabled ? 'ON' : 'OFF'}`);
+};
 
 // OpenSky Network API response indices
 const STATE_INDICES = {
@@ -311,10 +322,16 @@ const fetchFromOpenSky = async (bbox) => {
 
 /**
  * Fetch flights with automatic failover
- * Primary: ADSB.lol (no rate limits)
- * Fallback: OpenSky Network
+ * Primary: Simulation (demo mode)
+ * Fallback: ADSB.lol / OpenSky Network
  */
 export const fetchFlights = async (bbox) => {
+    // Use simulation mode for demo
+    if (useSimulation) {
+        currentApiSource = 'simulation';
+        return getSimulatedFlights(bbox);
+    }
+
     try {
         // Try ADSB.lol first (no rate limits!)
         return await fetchFromADSBLol(bbox);
@@ -336,6 +353,12 @@ export const fetchFlights = async (bbox) => {
  */
 export const searchFlightByCallsign = async (callsign) => {
     const searchTerm = callsign.toUpperCase().trim();
+
+    // Use simulation mode for demo
+    if (useSimulation) {
+        currentApiSource = 'simulation';
+        return searchSimulatedFlight(searchTerm);
+    }
 
     try {
         // Try ADSB.lol first - search globally
