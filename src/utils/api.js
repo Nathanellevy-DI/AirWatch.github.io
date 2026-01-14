@@ -221,6 +221,26 @@ const parseFlightState = (state) => {
 };
 
 /**
+ * Fetch with timeout wrapper
+ */
+const fetchWithTimeout = async (url, options = {}, timeout = 10000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        throw error;
+    }
+};
+
+/**
  * Fetch flights from ADSB.lol API (NO RATE LIMITS!)
  */
 const fetchFromADSBLol = async (bbox) => {
@@ -238,7 +258,7 @@ const fetchFromADSBLol = async (bbox) => {
 
     const url = `https://api.adsb.lol/v2/lat/${centerLat.toFixed(4)}/lon/${centerLon.toFixed(4)}/dist/${radiusNm}`;
 
-    const response = await fetch(url);
+    const response = await fetchWithTimeout(url, {}, 10000);
 
     if (!response.ok) {
         throw new Error(`ADSB.lol API error: ${response.status}`);
@@ -266,7 +286,7 @@ const fetchFromOpenSky = async (bbox) => {
     const { lamin, lomin, lamax, lomax } = bbox;
     const url = `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
 
-    const response = await fetch(url);
+    const response = await fetchWithTimeout(url, {}, 10000);
 
     if (!response.ok) {
         if (response.status === 429) {
