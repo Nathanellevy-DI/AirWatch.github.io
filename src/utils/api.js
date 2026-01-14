@@ -3,6 +3,12 @@
 // Fallback: ADSB.lol / OpenSky Network
 
 import { getSimulatedFlights, searchSimulatedFlight } from './simulation';
+import { validateBBox, validateCallsign } from './validation';
+import { openSkyLimiter, adsbLimiter } from './rateLimiter';
+
+// Secure credentials from environment variables
+const OPENSKY_USERNAME = import.meta.env.VITE_OPENSKY_USERNAME;
+const OPENSKY_PASSWORD = import.meta.env.VITE_OPENSKY_PASSWORD;
 
 // Simulation mode state (toggleable from UI)
 let useSimulation = true;
@@ -257,6 +263,17 @@ const fetchWithTimeout = async (url, options = {}, timeout = 10000) => {
 const fetchFromADSBLol = async (bbox) => {
     const { lamin, lomin, lamax, lomax } = bbox;
 
+    // Security: Input Validation
+    if (!validateBBox(bbox)) {
+        throw new Error('Invalid bounding box parameters');
+    }
+
+    // Security: Rate Limiting
+    if (!adsbLimiter.tryAcquire()) {
+        const waitTime = Math.ceil(adsbLimiter.getTimeToWait() / 1000);
+        throw new Error(`Rate limit exceeded. Please wait ${waitTime}s.`);
+    }
+
     // Calculate center and radius for ADSB.lol API
     const centerLat = (lamin + lamax) / 2;
     const centerLon = (lomin + lomax) / 2;
@@ -295,9 +312,27 @@ const fetchFromADSBLol = async (bbox) => {
  */
 const fetchFromOpenSky = async (bbox) => {
     const { lamin, lomin, lamax, lomax } = bbox;
+
+    // Security: Input Validation
+    if (!validateBBox(bbox)) {
+        throw new Error('Invalid bounding box parameters');
+    }
+
+    // Security: Rate Limiting
+    if (!openSkyLimiter.tryAcquire()) {
+        const waitTime = Math.ceil(openSkyLimiter.getTimeToWait() / 1000);
+        throw new Error(`OpenSky rate limit exceeded. Please wait ${waitTime}s.`);
+    }
+
     const url = `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
 
-    const response = await fetchWithTimeout(url, {}, 10000);
+    // Security: Add Basic Auth if credentials exist
+    const headers = {};
+    if (OPENSKY_USERNAME && OPENSKY_PASSWORD) {
+        headers['Authorization'] = 'Basic ' + btoa(`${OPENSKY_USERNAME}:${OPENSKY_PASSWORD}`);
+    }
+
+    const response = await fetchWithTimeout(url, { headers }, 10000);
 
     if (!response.ok) {
         if (response.status === 429) {
@@ -352,6 +387,12 @@ export const fetchFlights = async (bbox) => {
  * Search for a specific flight by callsign globally
  */
 export const searchFlightByCallsign = async (callsign) => {
+    // Security: Input Validation
+    if (!validateCallsign(callsign)) {
+        console.warn('Invalid callsign format');
+        return null;
+    }
+
     const searchTerm = callsign.toUpperCase().trim();
 
     // Use simulation mode for demo
