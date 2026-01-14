@@ -58,7 +58,12 @@ function App() {
         const newValue = !simulationEnabled;
         setSimulationEnabled(newValue);
         setSimulationMode(newValue);
-        loadFlights(); // Reload with new mode
+        // Clear current flights before loading new ones
+        setFlights([]);
+        setGlobalStats({ totalFlights: 0, airborne: 0, onGround: 0, countries: new Set() });
+        setError(null);
+        // Small delay to ensure state is updated before fetching
+        setTimeout(() => loadFlights(), 100);
     };
 
     // Get user's location on mount
@@ -184,10 +189,11 @@ function App() {
                             <Menu className="w-5 h-5" />
                         </button>
                         <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 
-                            flex items-center justify-center shadow-lg shadow-purple-500/20">
-                                <Plane className="w-5 h-5 text-white" />
-                            </div>
+                            <img
+                                src="/AirWatch.github.io/logo.png"
+                                alt="AirWatch"
+                                className="w-10 h-10 rounded-xl shadow-lg shadow-purple-500/20"
+                            />
                             <div>
                                 <h1 className="text-lg font-bold">AirWatch</h1>
                                 <div className="text-[10px] text-gray-500 uppercase tracking-wider">Global Flight Tracker</div>
@@ -368,8 +374,8 @@ function App() {
                                     <span className="text-sm text-gray-300">Demo Mode</span>
                                 </div>
                                 <span className={`text-xs px-2 py-0.5 rounded-full ${simulationEnabled
-                                        ? 'bg-green-500/20 text-green-400'
-                                        : 'bg-gray-500/20 text-gray-400'
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : 'bg-gray-500/20 text-gray-400'
                                     }`}>
                                     {simulationEnabled ? 'ON' : 'OFF'}
                                 </span>
