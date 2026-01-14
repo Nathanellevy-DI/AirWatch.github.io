@@ -320,7 +320,8 @@ const initializeFlights = () => {
             const destination = AIRPORTS[route.to];
             if (!origin || !destination) continue;
 
-            const progress = 0.05 + Math.random() * 0.9; // 5% to 95%
+            // Allow full range of progress to populate ground states immediately
+            const progress = Math.random();
             const flightDurationMs = route.duration * 60 * 1000;
             const departureTime = now - (progress * flightDurationMs);
 
@@ -337,12 +338,19 @@ const initializeFlights = () => {
             else if (progress > 0.85) altitude = ((1 - progress) / 0.15) * cruiseAlt;
             else altitude = cruiseAlt;
 
+            // Initial ground logic matching updateFlights
+            const isTaxiing = progress < 0.02 || progress > 0.98;
+            const onGround = isTaxiing || altitude < 100;
+            if (onGround) altitude = 0;
+
             const bearing = calculateBearing(origin.lat, origin.lon, destination.lat, destination.lon);
             const speed = AIRCRAFT_SPEEDS[route.aircraft] || 450;
 
             let verticalRate = 0;
-            if (progress < 0.15) verticalRate = 1500 + Math.random() * 500;
-            else if (progress > 0.85) verticalRate = -(1200 + Math.random() * 400);
+            if (!onGround) {
+                if (progress < 0.15) verticalRate = 1500 + Math.random() * 500;
+                else if (progress > 0.85) verticalRate = -(1200 + Math.random() * 400);
+            }
 
             activeFlights.push({
                 icao24,
@@ -357,10 +365,10 @@ const initializeFlights = () => {
                 longitude: pos.lon,
                 baroAltitude: altitude * 0.3048,
                 geoAltitude: altitude * 0.3048,
-                velocity: speed * 0.514444,
+                velocity: onGround ? 15 : speed * 0.514444,
                 trueTrack: bearing,
                 verticalRate: verticalRate * 0.00508,
-                onGround: false,
+                onGround: onGround,
                 originCountry: origin.country,
                 squawk: (1200 + Math.floor(Math.random() * 6000)).toString().padStart(4, '0'),
                 category: AIRCRAFT_CATEGORIES[route.aircraft] || 2,
