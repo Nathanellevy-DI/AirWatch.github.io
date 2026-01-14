@@ -386,11 +386,55 @@ const updateFlights = () => {
     lastUpdateTime = now;
 
     activeFlights = activeFlights.map(flight => {
+        // Handle fligts in turnaround (parked at gate)
+        if (flight.nextDepartureTime) {
+            if (now >= flight.nextDepartureTime) {
+                // Depart on new route!
+                const progress = 0.0;
+                const flightDurationMs = flight.route.duration * 60 * 1000;
+                const departureTime = now;
+
+                return {
+                    ...flight,
+                    departureTime,
+                    nextDepartureTime: null, // Clear turnaround
+                    progress,
+                    onGround: true, // Starting taxi
+                    velocity: 15, // Taxi speed ~30kts
+                    verticalRate: 0,
+                    baroAltitude: 0,
+                    geoAltitude: 0,
+                };
+            } else {
+                // Still waiting at gate
+                return {
+                    ...flight,
+                    onGround: true,
+                    velocity: 0,
+                    verticalRate: 0,
+                    baroAltitude: 0,
+                    geoAltitude: 0,
+                };
+            }
+        }
+
         const flightDurationMs = flight.route.duration * 60 * 1000;
         const newProgress = (now - flight.departureTime) / flightDurationMs;
 
+        // Valid flight progress
         if (newProgress >= 1) {
-            return { ...flight, departureTime: now - (Math.random() * 0.1 * flightDurationMs), progress: 0.05 };
+            // Flight arrived! Schedule turnaround (15-45 mins simulated)
+            const turnaroundMs = (60 + Math.random() * 120) * 1000; // 1-3 mins real time for demo
+
+            return {
+                ...flight,
+                nextDepartureTime: now + turnaroundMs,
+                progress: 1,
+                onGround: true,
+                velocity: 0,
+                baroAltitude: 0,
+                geoAltitude: 0
+            };
         }
 
         const pos = interpolatePosition(flight.origin.lat, flight.origin.lon, flight.destination.lat, flight.destination.lon, newProgress);
@@ -401,9 +445,17 @@ const updateFlights = () => {
         else if (newProgress > 0.85) altitude = ((1 - newProgress) / 0.15) * cruiseAltFt;
         else altitude = cruiseAltFt;
 
+        // Ground logic: Taxiing at start/end
+        const isTaxiing = newProgress < 0.02 || newProgress > 0.98;
+        const onGround = isTaxiing || altitude < 100;
+
+        if (onGround) altitude = 0;
+
         let verticalRate = 0;
-        if (newProgress < 0.15) verticalRate = 1500 + Math.random() * 500;
-        else if (newProgress > 0.85) verticalRate = -(1200 + Math.random() * 400);
+        if (!onGround) {
+            if (newProgress < 0.15) verticalRate = 1500 + Math.random() * 500;
+            else if (newProgress > 0.85) verticalRate = -(1200 + Math.random() * 400);
+        }
 
         const nextProgress = Math.min(newProgress + 0.01, 1);
         const nextPos = interpolatePosition(flight.origin.lat, flight.origin.lon, flight.destination.lat, flight.destination.lon, nextProgress);
@@ -418,6 +470,8 @@ const updateFlights = () => {
             geoAltitude: altitude * 0.3048,
             trueTrack: bearing,
             verticalRate: verticalRate * 0.00508,
+            onGround: onGround,
+            velocity: onGround ? 15 : (flight.route.aircraft ? AIRCRAFT_SPEEDS[flight.route.aircraft] : 450) * 0.514,
             lastContact: Math.floor(now / 1000),
             timePosition: Math.floor(now / 1000),
         };
