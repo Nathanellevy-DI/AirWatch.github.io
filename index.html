@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/AirWatch/plane.svg" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="AirWatch" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+  <!-- Meta Description -->
+  <meta name="description"
+    content="AirWatch - Global flight tracking. View real-time aircraft data worldwide with live data from OpenSky Network." />
+
+  <title>AirWatch - Global Flight Tracker</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+  <style>
+    /* iOS Safe Area Support */
+    :root {
+      --sat: env(safe-area-inset-top);
+      --sar: env(safe-area-inset-right);
+      --sab: env(safe-area-inset-bottom);
+      --sal: env(safe-area-inset-left);
+    }
+
+    /* Prevent overscroll bounce on iOS */
+    html,
+    body {
+      overscroll-behavior: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Hide scrollbar but allow scrolling */
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+  <script type="module" crossorigin src="/AirWatch/assets/index-AwqcBXm9.js"></script>
+  <link rel="stylesheet" crossorigin href="/AirWatch/assets/index-83KO9pxq.css">
+<link rel="manifest" href="/AirWatch/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/AirWatch/registerSW.js"></script></head>
+
+<body class="bg-aviation-dark">
+  <div id="root"></div>
+</body>
+
+</html>
