@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import { Navigation, Plane, Eye, EyeOff } from 'lucide-react';
-import { formatDistance, metersToFeet, msToKnots } from '../utils/geo';
+import { formatDistance, metersToFeet, msToKnots, generateGeodesicPath } from '../utils/geo';
 
 // Map event handler
 function MapEvents({ onViewChange }) {
@@ -119,13 +119,14 @@ function GlobalMap({ center, zoom, flights, userLocation, onFlightSelect, select
                 {/* Render Routes for Previewed Flights */}
                 {previewFlights.map(flight => {
                     if (flight.origin && flight.destination) {
+                        const routePositions = generateGeodesicPath(
+                            { lat: flight.origin.lat, lon: flight.origin.lon },
+                            { lat: flight.destination.lat, lon: flight.destination.lon }
+                        );
                         return (
                             <Polyline
                                 key={`route-${flight.icao24}`}
-                                positions={[
-                                    [flight.origin.lat, flight.origin.lon],
-                                    [flight.destination.lat, flight.destination.lon]
-                                ]}
+                                positions={routePositions}
                                 pathOptions={{
                                     color: '#a855f7',
                                     weight: 2,
@@ -160,7 +161,13 @@ function GlobalMap({ center, zoom, flights, userLocation, onFlightSelect, select
                             key={flight.icao24}
                             position={[flight.latitude, flight.longitude]}
                             icon={planeIcon}
-                            eventHandlers={{ click: () => onFlightSelect(flight) }}
+                            eventHandlers={{
+                                click: (e) => {
+                                    // Map click already handled by MapEvents? No, marker click handles select.
+                                    // Just ensure standard selection works.
+                                    onFlightSelect(flight);
+                                }
+                            }}
                         >
                             <Popup>
                                 <div className="bg-[#161b22] rounded-xl p-4 min-w-[200px]">
@@ -193,15 +200,21 @@ function GlobalMap({ center, zoom, flights, userLocation, onFlightSelect, select
 
                                     <div className="flex gap-2 mt-3">
                                         <button
-                                            onClick={() => onFlightSelect(flight)}
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Prevent map click or other bubbling
+                                                onFlightSelect(flight);
+                                            }}
                                             className="flex-1 py-2 bg-violet-500 hover:bg-violet-400
-                             text-white font-semibold rounded-lg transition-colors text-xs"
+                             text-white font-semibold rounded-lg transition-colors text-xs cursor-pointer"
                                         >
                                             Details
                                         </button>
                                         <button
-                                            onClick={() => onTogglePreview && onTogglePreview(flight)}
-                                            className={`flex-1 py-2 font-semibold rounded-lg transition-colors text-xs flex items-center justify-center gap-1
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Critical for button responsiveness
+                                                if (onTogglePreview) onTogglePreview(flight);
+                                            }}
+                                            className={`flex-1 py-2 font-semibold rounded-lg transition-colors text-xs flex items-center justify-center gap-1 cursor-pointer
                                                 ${isPreviewing
                                                     ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
                                                     : 'bg-white/10 text-white hover:bg-white/20'}`}

@@ -80,3 +80,64 @@ export const msToKnots = (ms) => {
 export const msToFpm = (ms) => {
     return Math.round(ms * 196.85);
 };
+
+/**
+ * Calculate an intermediate point between two coordinates along a Great Circle path
+ * @param {number} lat1 
+ * @param {number} lon1 
+ * @param {number} lat2 
+ * @param {number} lon2 
+ * @param {number} fraction (0 to 1)
+ * @returns {Object} {lat, lon}
+ */
+export const calculateIntermediatePoint = (lat1, lon1, lat2, lon2, fraction) => {
+    const lat1Rad = lat1 * Math.PI / 180;
+    const lon1Rad = lon1 * Math.PI / 180;
+    const lat2Rad = lat2 * Math.PI / 180;
+    const lon2Rad = lon2 * Math.PI / 180;
+
+    const dLon = lon2Rad - lon1Rad;
+    const dLat = lat2Rad - lat1Rad;
+
+    // Angular distance calculation
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1Rad) * Math.cos(lat2Rad) * Math.sin(dLon / 2) ** 2;
+    const d = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    // Handle coincident points
+    if (d < 1e-6) return { lat: lat1, lon: lon1 };
+
+    const A = Math.sin((1 - fraction) * d) / Math.sin(d);
+    const B = Math.sin(fraction * d) / Math.sin(d);
+
+    const x = A * Math.cos(lat1Rad) * Math.cos(lon1Rad) + B * Math.cos(lat2Rad) * Math.cos(lon2Rad);
+    const y = A * Math.cos(lat1Rad) * Math.sin(lon1Rad) + B * Math.cos(lat2Rad) * Math.sin(lon2Rad);
+    const z = A * Math.sin(lat1Rad) + B * Math.sin(lat2Rad);
+
+    const lat = Math.atan2(z, Math.sqrt(x * x + y * y));
+    const lon = Math.atan2(y, x);
+
+    return {
+        lat: lat * 180 / Math.PI,
+        lon: lon * 180 / Math.PI
+    };
+};
+
+/**
+ * Generate a set of points representing a geodesic path
+ * @param {Object} start {lat, lon}
+ * @param {Object} end {lat, lon}
+ * @param {number} numPoints 
+ * @returns {Array} Array of [lat, lon] arrays
+ */
+export const generateGeodesicPath = (start, end, numPoints = 100) => {
+    const points = [];
+    for (let i = 0; i <= numPoints; i++) {
+        const p = calculateIntermediatePoint(
+            start.lat, start.lon,
+            end.lat, end.lon,
+            i / numPoints
+        );
+        points.push([p.lat, p.lon]);
+    }
+    return points;
+};
