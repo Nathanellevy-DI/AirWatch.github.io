@@ -66,6 +66,18 @@ function App() {
         setTimeout(() => loadFlights(), 100);
     };
 
+    // Route Preview Mode
+    const [previewFlights, setPreviewFlights] = useState([]);
+
+    const togglePreview = useCallback((flight) => {
+        setPreviewFlights(prev => {
+            const exists = prev.find(f => f.icao24 === flight.icao24);
+            if (exists) return prev.filter(f => f.icao24 !== flight.icao24);
+            if (prev.length >= 5) return prev; // Max 5 limit
+            return [...prev, flight];
+        });
+    }, []);
+
     // Get user's location on mount
     useEffect(() => {
         if (navigator.geolocation) {
@@ -128,9 +140,11 @@ function App() {
     // Load flights on view change
     useEffect(() => {
         loadFlights();
-        const interval = setInterval(loadFlights, REFRESH_INTERVAL);
+        // Dynamic interval: 1s for simulation (smooth), 15s for API (safe)
+        const intervalMs = simulationEnabled ? 1000 : REFRESH_INTERVAL;
+        const interval = setInterval(loadFlights, intervalMs);
         return () => clearInterval(interval);
-    }, [loadFlights]);
+    }, [loadFlights, simulationEnabled]);
 
     // Search for flight
     const handleSearch = async (callsign) => {
@@ -425,6 +439,8 @@ function App() {
                                 setViewCenter(center);
                                 setMapZoom(zoom);
                             }}
+                            previewFlights={previewFlights}
+                            onTogglePreview={togglePreview}
                         />
                     )}
 

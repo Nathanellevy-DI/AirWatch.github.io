@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Polyline } from 'react-leaflet';
 import L from 'leaflet';
-import { Navigation, Plane } from 'lucide-react';
+import { Navigation, Plane, Eye, EyeOff } from 'lucide-react';
 import { formatDistance, metersToFeet, msToKnots } from '../utils/geo';
 
 // Map event handler
@@ -83,8 +83,17 @@ const createPlaneIcon = (heading, isSelected = false) => {
     });
 };
 
-function GlobalMap({ center, zoom, flights, userLocation, onFlightSelect, selectedFlight, onViewChange }) {
+function GlobalMap({ center, zoom, flights, userLocation, onFlightSelect, selectedFlight, onViewChange, previewFlights = [], onTogglePreview }) {
     const userIcon = useMemo(() => createUserIcon(), []);
+
+    // Filter visible flights if preview mode is active
+    const visibleFlights = useMemo(() => {
+        if (previewFlights.length > 0) {
+            // Show only previewed flights
+            return flights.filter(f => previewFlights.some(pf => pf.icao24 === f.icao24));
+        }
+        return flights;
+    }, [flights, previewFlights]);
 
     return (
         <div className="fixed inset-0 pt-16 lg:pl-72 pb-16 lg:pb-0">
@@ -107,6 +116,28 @@ function GlobalMap({ center, zoom, flights, userLocation, onFlightSelect, select
                 <ViewUpdater center={center} zoom={zoom} />
                 <MapEvents onViewChange={onViewChange} />
 
+                {/* Render Routes for Previewed Flights */}
+                {previewFlights.map(flight => {
+                    if (flight.origin && flight.destination) {
+                        return (
+                            <Polyline
+                                key={`route-${flight.icao24}`}
+                                positions={[
+                                    [flight.origin.lat, flight.origin.lon],
+                                    [flight.destination.lat, flight.destination.lon]
+                                ]}
+                                pathOptions={{
+                                    color: '#a855f7',
+                                    weight: 2,
+                                    dashArray: '5, 10',
+                                    opacity: 0.6
+                                }}
+                            />
+                        );
+                    }
+                    return null;
+                })}
+
                 {/* User location */}
                 {userLocation && (
                     <Marker position={[userLocation.lat, userLocation.lon]} icon={userIcon}>
@@ -119,9 +150,10 @@ function GlobalMap({ center, zoom, flights, userLocation, onFlightSelect, select
                 )}
 
                 {/* Flight markers */}
-                {flights.map((flight) => {
+                {visibleFlights.map((flight) => {
                     const isSelected = selectedFlight?.icao24 === flight.icao24;
-                    const planeIcon = createPlaneIcon(flight.trueTrack, isSelected);
+                    const isPreviewing = previewFlights.some(pf => pf.icao24 === flight.icao24);
+                    const planeIcon = createPlaneIcon(flight.trueTrack, isSelected || isPreviewing);
 
                     return (
                         <Marker
@@ -158,37 +190,32 @@ function GlobalMap({ center, zoom, flights, userLocation, onFlightSelect, select
                                             </span>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => onFlightSelect(flight)}
-                                        className="w-full mt-3 py-2 bg-violet-500 hover:bg-violet-400
-                             text-white font-semibold rounded-lg transition-colors"
-                                    >
-                                        View Details
-                                    </button>
+
+                                    <div className="flex gap-2 mt-3">
+                                        <button
+                                            onClick={() => onFlightSelect(flight)}
+                                            className="flex-1 py-2 bg-violet-500 hover:bg-violet-400
+                             text-white font-semibold rounded-lg transition-colors text-xs"
+                                        >
+                                            Details
+                                        </button>
+                                        <button
+                                            onClick={() => onTogglePreview && onTogglePreview(flight)}
+                                            className={`flex-1 py-2 font-semibold rounded-lg transition-colors text-xs flex items-center justify-center gap-1
+                                                ${isPreviewing
+                                                    ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                                                    : 'bg-white/10 text-white hover:bg-white/20'}`}
+                                        >
+                                            {isPreviewing ? <EyeOff size={14} /> : <Eye size={14} />}
+                                            {isPreviewing ? 'Hide' : 'Preview'}
+                                        </button>
+                                    </div>
                                 </div>
                             </Popup>
                         </Marker>
                     );
                 })}
             </MapContainer>
-
-            {/* Zoom controls */}
-            <div className="absolute bottom-20 lg:bottom-4 right-4 z-[400] flex flex-col gap-2">
-                <button
-                    onClick={() => onViewChange(center, Math.min(zoom + 1, 18))}
-                    className="w-10 h-10 rounded-xl bg-[#161b22]/90 backdrop-blur-lg border border-white/10
-                   text-white hover:bg-white/10 transition-colors flex items-center justify-center text-lg font-bold"
-                >
-                    +
-                </button>
-                <button
-                    onClick={() => onViewChange(center, Math.max(zoom - 1, 2))}
-                    className="w-10 h-10 rounded-xl bg-[#161b22]/90 backdrop-blur-lg border border-white/10
-                   text-white hover:bg-white/10 transition-colors flex items-center justify-center text-lg font-bold"
-                >
-                    −
-                </button>
-            </div>
         </div>
     );
 }
