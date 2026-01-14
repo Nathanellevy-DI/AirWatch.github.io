@@ -1,1 +1,1 @@
-if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/AirWatch/sw.js', { scope: '/AirWatch/' })})}
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/AirWatch.github.io/sw.js', { scope: '/AirWatch.github.io/' })})}
