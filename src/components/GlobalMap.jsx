@@ -110,7 +110,7 @@ function GlobalMap({ center, zoom, flights, userLocation, onFlightSelect, select
     }, [flights, previewFlights, zoom]);
 
     return (
-        <div className="fixed inset-0 pt-16 lg:pl-72 pb-16 lg:pb-0">
+        <div className="fixed inset-0 pt-16 md:pl-72 pb-16 md:pb-0">
             <MapContainer
                 center={[center.lat, center.lon]}
                 zoom={zoom}

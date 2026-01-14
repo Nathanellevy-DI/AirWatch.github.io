@@ -198,7 +198,7 @@ function App() {
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setShowSidebar(!showSidebar)}
-                            className="lg:hidden w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center"
+                            className="md:hidden w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center"
                         >
                             <Menu className="w-5 h-5" />
                         </button>
@@ -271,9 +271,9 @@ function App() {
             {/* Main Layout */}
             <div className="flex" style={{ paddingTop: 'calc(4rem + env(safe-area-inset-top, 0px))' }}>
                 {/* Left Sidebar */}
-                <aside className={`fixed left-0 bottom-0 w-72 bg-[#161b22]/95 backdrop-blur-xl 
+                <aside className={`fixed left-0 bottom-0 w-72 bg-[#161b22]/95 backdrop-blur-xl
                           border-r border-white/5 z-40 transform transition-transform duration-300
-                          ${showSidebar ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+                          ${showSidebar ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
                     style={{ top: 'calc(4rem + env(safe-area-inset-top, 0px))' }}>
                     <div className="p-4 h-full overflow-y-auto hide-scrollbar">
                         {/* Quick Stats */}
@@ -414,7 +414,7 @@ function App() {
                 </aside>
 
                 {/* Main Content */}
-                <main className="flex-1 lg:ml-72">
+                <main className="flex-1 md:ml-72">
                     {/* Error Banner */}
                     {error && (
                         <div className="mx-4 mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl 
@@ -476,7 +476,7 @@ function App() {
             )}
 
             {/* Mobile Bottom Nav */}
-            <nav className="fixed bottom-0 left-0 right-0 lg:hidden bg-[#161b22]/95 backdrop-blur-xl 
+            <nav className="fixed bottom-0 left-0 right-0 md:hidden bg-[#161b22]/95 backdrop-blur-xl 
                       border-t border-white/5 px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
                 <div className="flex items-center justify-around">
                     {[
